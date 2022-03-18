@@ -1,0 +1,205 @@
+---
+title: "SDM_Assignment3_3"
+author: "Sri Balaji Muruganandam"
+date: "25/10/2021"
+output: html_document
+---
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment3")
+```
+
+### Importing necessary libraries
+```{r}
+library(ISLR)
+library(caret)
+library(class)
+library(ggplot2)
+library(e1071)
+library(gridExtra)
+library(mvtnorm)
+library(MASS)
+```
+
+### Loading the diabetes dataset
+```{r}
+load("Diabetes.RData")
+dim(Diabetes)
+```
+
+### Exploring the high level overview of the data
+```{r}
+head(Diabetes,5)
+str(Diabetes)
+summary(Diabetes)
+```
+
+### Plotting Scatter Plot
+```{r}
+plot(Diabetes)
+```
+### There is a positive correlation between Glufast and the GluTest
+```{r}
+plot(Diabetes$glufast, Diabetes$glutest,col="#00918E", xlab = "Glufast", ylab = "Glutest", ylim = c(200,1600), main = "Correlation of Glufast and the GluTest", sub="They have positive correlation", lwd = 2.3)
+```
+## Scatter plot of five variables - relwt, glufast, glutest, instest, sspg
+```{r}
+table(Diabetes$group)
+#Diabetes$group = as.numeric(Diabetes$group)
+```
+### relwt
+```{r}
+
+d1 = qplot(Diabetes$relwt, Diabetes$glutest, colour = Diabetes$group ,data = Diabetes)
+d2 = qplot(Diabetes$relwt, Diabetes$instest, colour = Diabetes$group ,data = Diabetes)
+d3 = qplot(Diabetes$relwt, Diabetes$sspg, colour = Diabetes$group ,data = Diabetes)
+d4 = qplot(Diabetes$relwt, Diabetes$glufast, colour = Diabetes$group ,data = Diabetes)
+
+grid.arrange(d1, d2, d3, d4, nrow = 2, ncol=2)
+```
+
+### glufast
+```{r}
+d1 = qplot(Diabetes$glufast,Diabetes$glutest, colour = Diabetes$group ,data = Diabetes)
+d2 = qplot(Diabetes$glufast,Diabetes$instest, colour = Diabetes$group ,data = Diabetes)
+d3 = qplot(Diabetes$glufast,Diabetes$sspg, colour = Diabetes$group ,data = Diabetes)
+
+grid.arrange(d1, d2, d3, nrow = 2, ncol=2)
+```
+
+### glutest
+```{r}
+d1 = qplot(Diabetes$glutest,Diabetes$instest, colour = Diabetes$group ,data = Diabetes)
+d2 = qplot(Diabetes$glutest,Diabetes$sspg, colour = Diabetes$group ,data = Diabetes)
+
+grid.arrange(d1, d2, nrow = 1, ncol=2)
+```
+
+### Covariance 
+```{r}
+data2 = Diabetes
+Diabetes$group = as.numeric(Diabetes$group)
+covariance = cov(Diabetes)
+print(covariance)
+```
+### Classes have strong correlation with the predictor glutest and sspg
+
+### calculating multivariate normal
+```{r}
+norm_d = dmvnorm(x=Diabetes$group)
+print(norm_d)
+```
+
+
+
+## (b)  Apply  linear  discriminant  analysis  (LDA)  and  quadratic  discriminant  analysis (QDA).    How  does  the  performance  of  QDA  compare  to  that  of  LDA  in  this  case?
+
+### Preparing data
+```{r}
+#data2 = Diabetes
+#set.seed(123)
+#set.seed(121)
+set.seed(123)
+random_index = sample(c(1:nrow(Diabetes)), size = round(8/10 * nrow(Diabetes)), replace = FALSE)
+train_data2 <- data2[random_index,]
+test_data2 <- data2[-random_index,]
+
+train_data2 = data.frame(train_data2)
+test_data2 = data.frame(test_data2)
+data2 = data.frame(data2)
+
+
+y_train_data2 <- as.numeric(train_data2$group)-1
+y_test_data2 <- as.numeric(test_data2$group)-1
+
+#y_train_data2 <- train_data2$group
+#y_test_data2 <- test_data2$group
+```
+
+
+## Modelling LDA
+```{r}
+lda_model = lda(group~., data = train_data2)
+summary(lda_model)
+```
+
+### Predicting for test data
+```{r}
+lda_predict_train = predict(lda_model, newdata = train_data2)
+lda_predict_test = predict(lda_model, newdata = test_data2)
+res_train = as.numeric(lda_predict_train$class)-1
+res_test = as.numeric(lda_predict_test$class)-1
+#res_train = lda_predict_train$class
+#res_test = lda_predict_test$class
+```
+### Calculating the train and test errors
+```{r}
+
+lda_result_train = which(res_train==y_train_data2)
+lda_train_error=length(lda_result_train) / length(y_train_data2)
+print(lda_train_error)
+
+
+lda_result_test = which(res_test==y_test_data2)
+lda_test_error=length(lda_result_test) / length(y_test_data2)
+print(lda_test_error)
+```
+
+### The accuracy for training set is 90.51% and the accuracy for testing set is 86.20% when predicted using LDA.
+
+## Modelling QDA
+```{r}
+qda_model = qda(group~., data = train_data2)
+summary(qda_model)
+```
+
+### Predicting for test data
+```{r}
+qda_predict_train = predict(qda_model, newdata = train_data2)
+qda_predict_test = predict(qda_model, newdata = test_data2)
+res_trainq = as.numeric(qda_predict_train$class)-1
+res_testq = as.numeric(qda_predict_test$class)-1
+#res_trainq = qda_predict_train$class
+#res_testq = qda_predict_test$class
+```
+### Calculating the train and test errors
+```{r}
+
+qda_result_train = which(res_trainq==y_train_data2)
+qda_train_error=length(qda_result_train) / length(y_train_data2)
+print(qda_train_error)
+
+
+qda_result_test = which(res_testq==y_test_data2)
+qda_test_error=length(qda_result_test) / length(y_test_data2)
+print(qda_test_error)
+```
+
+### The accuracy for training set is 96.55% and the accuracy for testing set is 89.65% when predicted using QDA.
+
+## QDA provides better prediction than the LDA
+
+## (c)  Suppose  an  individual  has  (glucose  test/intolerence=  68,  insulin  test=122, SSPG =  544.  Relative  weight  =  1.86,  fasting  plasma  glucose  =  184).    To  which class  does  LDA  assign  this  individual?    To  which  class  does  QDA?
+
+```{r}
+#to_predict = c(1.86, 184, 68, 122, 544)
+new_data1 <-data.frame(1.86, 184, 68, 122, 544)
+
+colnames(new_data1)<-c("relwt","glufast","glutest","instest","sspg")
+head(new_data1)
+new_data_predict = predict(qda_model, newdata = new_data1)
+print(new_data_predict$class)
+```
+
+## The class is found to be Overt_Diabetic for the given predictor values when predicted using QDA model
+
+```{r}
+new_data_predict_lda = predict(lda_model, newdata = new_data1)
+print(new_data_predict_lda$class)
+```
+
+## The class is found to be Normal for the given predictor values when predicted using LDA model
+
+

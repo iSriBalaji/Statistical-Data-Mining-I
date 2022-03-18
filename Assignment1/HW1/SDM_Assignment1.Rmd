@@ -1,0 +1,121 @@
+---
+title: "SDM Assignment 1"
+author: "Sri Balaji Muruganandam"
+date: "17/09/2021"
+output: html_document
+---
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment1")
+```
+
+### Importing necessary libraries
+```{r}
+library(skimr)
+library(dplyr)
+```
+
+### Importing Cereal data from local path
+```{r}
+c_data <- read.delim("cereal.csv",sep = ",")
+dim(c_data)
+```
+
+### Viewing the Sample data
+```{r}
+head(c_data, 5)
+tail(c_data, 5)
+```
+
+### Getting High Level Overview of the data
+```{r}
+str(c_data)
+summary(c_data)
+```
+
+### Checking if there are any missing values
+```{r}
+sum(is.na(c_data))
+```
+There is no missing data in the dataset
+
+### Outliers and Graphs
+```{r}
+boxplot(c_data$potass, notch = TRUE, main = "Potassium in Milligrams")
+```
+##### There are outliers in the potass column
+
+### Removing the Outliers
+##### As the data is very less. Keeping all of the data for Regression model.
+```{r}
+#boxplot.stats(c_data$potass)$out
+#out_potass <- boxplot.stats(c_data$potass)$out
+#c_data <- filter(c_data, potass != out_potass)
+#dim(c_data)
+#head(c_data, 10)
+```
+
+### Calories is normally distributed
+```{r}
+hist(c_data$calories,breaks = 10, col="#4B3869", border = "#6D8299", main = "Calories - Normally Distributed")
+
+```
+
+### There is a positive correlation between fiber and potass
+```{r}
+pairs(c_data$fiber~c_data$potass)
+```
+
+
+
+### Checking the unique values of mfr and type
+```{r}
+table(c_data$mfr)
+table(c_data$type)
+```
+
+### Converting categorical variables into numerical values
+```{r}
+mfr_fact <- as.factor(c_data$mfr)
+c_data$mfr <- as.numeric(mfr_fact)
+
+c_data$type<-ifelse(c_data$type=="C",1,0)
+```
+
+## Data Transformation
+### Converting vitamins(percentage) to float value
+
+```{r}
+table(c_data$vitamins)
+c_data$vitamins <- c_data$vitamins / 100
+
+#c_data$vitamins_num <- log(c_data$vitamins, base = 10)/2
+#c_data$vitamins_num<-ifelse(c_data$vitamins_num =="-Inf",0,c_data$vitamins_num)
+```
+
+## Converting rating to float value
+```{r}
+c_data$rating <- c_data$rating / 100
+```
+
+
+### Taking log to Potass Column
+#### Values of the Potass varying so much.
+```{r}
+table(c_data$potass)
+c_data$potass <- log(c_data$potass, base = 10)
+c_data <- na.omit(c_data)
+
+head(c_data, 10)
+sum(is.na(c_data))
+```
+
+### Saving the preprocessed data in Rdata file
+```{r}
+save(c_data, file = "cereal_clean_data.RData")
+```
+
+
+

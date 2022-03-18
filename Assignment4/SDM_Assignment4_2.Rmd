@@ -1,0 +1,185 @@
+---
+title: "SDM_Assignment4_2"
+author: "Sri Balaji Muruganandam"
+date: "14/11/2021"
+output: html_document
+---
+
+## Use the same Boston dataset that you used in Question 1. Fit classification models in order to predict whether a given census tract has a crime rate avoce or below the median. Explore logistic regression, LDA, knn and CART. Describe your findings. 
+
+```{r}
+rm(list = ls())
+library(ISLR2)
+library(leaps)
+library(caret)
+library(MASS)
+library(rpart)
+#library(MMST)
+data(Boston)
+dim(Boston)
+```
+
+```{r}
+head(Boston,10)
+```
+
+### Creating the crim_class column based on the median of the crim
+```{r}
+crim_medi = median(Boston$crim)
+data = data.frame(Boston)
+
+data$crim_class[data$crim>crim_medi] <- 1
+data$crim_class[data$crim<=crim_medi] <- 0
+tail(data,13)
+```
+
+## Splitting the data into training and the test data
+```{r}
+set.seed(23)
+random_index = sample(c(1:nrow(data)), size = round(8/10 * nrow(data)), replace = FALSE)
+train_data <- data[random_index,]
+test_data <- data[-random_index,]
+
+y_train_data = train_data$crim_class
+y_test_data = test_data$crim_class
+
+dim(train_data)
+dim(test_data)
+```
+
+### Modelling Logistic Regression
+```{r}
+model = glm(crim_class~., data = train_data, family = "binomial")
+summary(model)
+```
+
+### Predicting for new values
+```{r}
+test_predict = predict(model, newdata = test_data, type = "response")
+y_predict_test = round(test_predict)
+```
+
+### Calculating the error
+```{r}
+test_error <- sum(abs(y_predict_test- y_test_data))/length(y_test_data)
+print(test_error)
+```
+
+### Computing the confusion matrix
+```{r}
+conf <- confusionMatrix(as.factor(y_predict_test), as.factor(y_test_data))
+names(conf)
+conf$table
+conf$overall
+```
+
+### The model has predicted all of the test errors correctly
+
+### Calculating the accuracy using formula
+```{r}
+false_result = which(y_predict_test==y_test_data)
+accuracy=length(false_result) / length(y_test_data)
+print(accuracy)
+```
+
+
+### Modelling LDA
+```{r}
+lda_model = lda(crim_class~., data = train_data)
+summary(lda_model)
+```
+
+### Plotting the values of LDA
+```{r}
+plot(lda_model)
+```
+
+### Predicting for test data
+```{r}
+lda_predict_train = predict(lda_model, newdata = train_data)
+lda_predict_test = predict(lda_model, newdata = test_data)
+res_train = lda_predict_train$class
+res_test = lda_predict_test$class
+```
+
+### Calculating the train and test errors
+```{r}
+
+lda_result_train = which(res_train!=y_train_data)
+lda_train_error=length(lda_result_train) / length(y_train_data)
+print(lda_train_error)
+
+
+lda_result_test = which(res_test!=y_test_data)
+lda_test_error=length(lda_result_test) / length(y_test_data)
+print(lda_test_error)
+```
+
+### The train error is 0.1308642 and the test error is 0.1782178 when predicted using LDA.
+
+### Modelling KNN with the values k = 1,3,5,7,9,11,13,15
+```{r}
+require(class)
+kvalues = c(1,3,5,7,9,11,13,15)
+model_knn = c()
+error_knn = c()
+knn_accuracy = c()
+for(i in 1:8) {
+  predict_knn <-knn(train_data[,-1],test_data[,-1],y_train_data,k=kvalues[i])
+  #model_knn[i] = predict_knn
+  error_knn[i]<- mean(predict_knn != y_test_data)
+  
+  false_result_knn = which(predict_knn == y_test_data)
+  knn_accuracy[i] = length(false_result_knn)/length(y_test_data)
+}
+```
+
+### Error at each k value
+```{r}
+print(error_knn)
+print(min(error_knn))
+```
+
+### Accuracy at each k value
+```{r}
+print(knn_accuracy)
+print(max(knn_accuracy))
+```
+
+### From the given k values k = 1,3,5,7,9,11,13,15, k =3 gives better accuracy
+### When K= 5 the error is 0.04950495
+
+### Plotting K and Accuracy
+```{r}
+plot(kvalues,knn_accuracy, col="#334756", type = "b", xlab = "K Value", ylab = "Accuracy", ylim = c(0.90,1.0), main = "Accuracy vs K", sub="Accuracy is more when k = 5", lwd = 3.0)
+```
+
+## Modelling CART
+```{r}
+model.controls = rpart.control(minsplit = 10, minbucket = 3, xval=5,cp=0)
+fit_boston = rpart(crim_class~., data = data, control = model.controls)
+```
+
+### Finding mininmum cp
+```{r}
+min_cp = which.min(fit_boston$cptable[,4])
+print(min_cp)
+```
+```{r}
+pruned_fit = prune(fit_boston, cp = fit_boston$cptable[min_cp,1])
+plot(fit_boston$cptable[,4], main = "cp for model selection", ylab="cv error")
+```
+
+### Pruned Tree
+```{r}
+plot(pruned_fit, branch=0.4,compress=T, main="Pruned Tree")
+text(pruned_fit,cex=0.7)
+```
+
+### Full Tree
+```{r}
+plot(fit_boston, branch=0.3,compress=T, main="Full Tree")
+text(fit_boston,cex=0.7)
+```
+
+

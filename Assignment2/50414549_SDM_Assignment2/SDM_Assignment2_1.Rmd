@@ -1,0 +1,142 @@
+---
+title: "SDM_Assignment2_1"
+author: "Sri Balaji Muruganandam"
+udid: "50414549"
+date: "02/10/2021"
+output: html_document
+---
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment2")
+```
+
+### Importing necessary libraries
+```{r}
+library(leaps)
+```
+
+### Importing Cereal data from local path
+```{r}
+load("cereal_clean_data.RData")
+#c_data <- read.delim("cereal.csv",sep = ",")
+dim(c_data)
+```
+
+### Viewing the Sample data
+```{r}
+head(c_data, 5)
+tail(c_data, 5)
+```
+
+### Splitting 80% data for training and 20% for the test data
+```{r}
+#new_data = sort(sample(nrow(c_data), nrow(c_data)*.8))
+set.seed(23)
+new_data = sample(c(1:length(c_data[,1])), size = round(8/10 * length(c_data[,1])), replace = FALSE)
+train_data <- c_data[new_data,]
+test_data <- c_data[-new_data,]
+y_train_data <- train_data$rating
+y_test_data <- test_data$rating
+```
+## Performing Linear Regression
+### Fitting a linear model and predicting the Mean Square Error(MSE) for the test data
+```{r}
+model_fit <- lm(rating~., data = train_data[,2:16])
+train_MSE <- mean(model_fit$residuals^2)
+names(model_fit)
+```
+### Summary of Regression model
+```{r}
+summary(model_fit)
+```
+
+### Fitting the test data and calculating the MSE
+```{r}
+model_predict_test <- predict.lm(model_fit, test_data[,2:15])
+test_MSE <- mean((y_test_data - model_predict_test)^2)
+print(test_MSE)
+print(round(test_MSE, digit = 7))
+```
+
+## Performing Forward Subset Selection
+
+### Creating objects to store errors
+```{r}
+train_error_st <- matrix(rep(NA,14))
+test_error_st <- matrix(rep(NA,14))
+```
+
+```{r}
+predict.regsubsets = function(object, newdata, id){
+    form = as.formula(object$call[[2]])
+    mat = model.matrix(form, newdata)
+    coefi = coef(object,id=id)
+    xvars=names(coefi)
+    mat[,xvars]%*%coefi
+}
+```
+
+```{r}
+fwd_subset <- regsubsets(rating~., data = c_data[,2:16], nbest = 1, nvmax = 15, method = "forward")
+```
+
+```{r}
+for(i in 1:14){
+  y_hat_train = predict(fwd_subset, newdata = train_data[,2:16], id = i)
+  y_hat_test = predict(fwd_subset, newdata = test_data[,2:16], id = i)
+  
+  train_error_st[i] = (1/length(y_train_data))*sum((y_train_data-y_hat_train)^2)
+  test_error_st[i] = (1/length(y_test_data))*sum((y_test_data-y_hat_test)^2)
+}
+```
+```{r}
+par(bg = '#EEEEEE')
+plot(train_error_st, col="#E05D5D", type = "b", xlab = "No. of Variables", ylab = "MSE", ylim = c(0,0.014), main = "Mean Square Error vs No of Variables", sub="Mean Square Error is less at 10", lwd = 3.0)
+lines(test_error_st, col = "#00918E", type = "b", lwd = 3.0)
+
+```
+
+### Subset with minimum error
+```{r}
+which(test_error_st == min(test_error_st))
+print(min(test_error_st))
+```
+
+## Performing Exhaustive Selection
+### Defining the model
+```{r}
+ex_subset <- regsubsets(rating~., data = c_data[,2:16], nbest = 1, nvmax = 15, method = "exhaustive")
+ex_summary <- summary(ex_subset)
+names(ex_summary)
+```
+### Plotting Exhaustive Selection Measurements
+```{r}
+par(mfrow = c(2,2),bg = '#EEEEEE')
+plot(ex_summary$cp, xlab = "No. of Variables", ylab = "Cp", type = "l",col = "#00918E",lwd = 2.5)
+plot(ex_summary$bic, xlab = "No. of Variables", ylab = "BIC", type = "l",col = "#00918E",lwd = 2.5)
+plot(ex_summary$rss, xlab = "No. of Variables", ylab = "RSS", type = "l",col = "#00918E",lwd = 2.5)
+plot(ex_summary$adjr2, xlab = "No. of Variables", ylab = "Adjusted Rsq", type = "l",col = "#00918E",lwd = 2.5)
+```
+
+### Finding the optimal model measures selection
+```{r}
+which(ex_summary$cp == min(ex_summary$cp))
+which(ex_summary$bic == min(ex_summary$bic))
+which(ex_summary$rss == min(ex_summary$rss))
+which(ex_summary$adjr2 == max(ex_summary$adjr2))
+```
+```{r}
+print(min(ex_summary$rss))
+print(max(ex_summary$adjr2))
+```
+
+
+### Linear model provides a MSE of 0.0000432 and R2 value of 0.9984. Whereas Forward Selection provides a MSE of 0.0000142 and Exhaustive Subset selection has a R2 of 0.9986.
+
+### Exhaustive subset selection is better than the Linear model and the forward selection. Exhaustive model has a R2 value of 99.86% which is close to 1. Almost 99.8% of data fit the model well.
+
+
+
+
+

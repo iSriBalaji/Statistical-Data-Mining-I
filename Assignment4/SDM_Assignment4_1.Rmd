@@ -1,0 +1,86 @@
+---
+title: "SDM_Assignment4_1"
+author: "Sri Balaji Muruganandam"
+date: "14/11/2021"
+output: html_document
+---
+
+## 1) For the Boston data in the ISLR2 package: 
+### > library(ISLR2)
+### > data(Boston)
+### > ?Boston
+## Using best subset regression analysis fit models for “medv” (median value of owner-occupied homes in $1000s). Perform model selection using the AIC, BIC, five-and tenfold cross-validation, and bootstrap .632 estimates of prediction error. Comment on your results and the differences in the selected model.
+
+```{r}
+rm(list = ls())
+library(ISLR2)
+library(leaps)
+library(caret)
+data(Boston)
+dim(Boston)
+```
+
+## Splitting the data into training and the test data
+```{r}
+set.seed(23)
+random_index = sample(c(1:nrow(Boston)), size = round(8/10 * nrow(Boston)), replace = FALSE)
+train_data <- Boston[random_index,]
+test_data <- Boston[-random_index,]
+
+dim(train_data)
+dim(test_data)
+```
+
+## Performing Exhaustive Selection
+### Defining the model
+```{r}
+ex_subset <- regsubsets(medv~., data = train_data, nbest = 1, nvmax = 15, method = "exhaustive")
+ex_summary <- summary(ex_subset)
+names(ex_summary)
+```
+### Plotting Exhaustive Selection Measurements
+```{r}
+par(mfrow = c(2,2),bg = '#EEEEEE')
+plot(ex_summary$cp, xlab = "No. of Variables", ylab = "Cp", type = "l",col = "#00918E",lwd = 2.5)
+plot(ex_summary$rss, xlab = "No. of Variables", ylab = "RSS", type = "l",col = "#00918E",lwd = 2.5)
+plot(ex_summary$adjr2, xlab = "No. of Variables", ylab = "Adjusted Rsq", type = "l",col = "#00918E",lwd = 2.5)
+```
+
+### Finding the optimal model measures selection
+```{r}
+which(ex_summary$cp == min(ex_summary$cp))
+which(ex_summary$bic == min(ex_summary$bic))
+which(ex_summary$rss == min(ex_summary$rss))
+which(ex_summary$adjr2 == max(ex_summary$adjr2))
+```
+```{r}
+print(min(ex_summary$rss))
+print(max(ex_summary$adjr2))
+```
+
+## Performing model selection using BIC
+```{r}
+plot(ex_summary$bic, xlab = "No. of Variables", ylab = "BIC", type = "l",col = "#00918E",lwd = 2.5)
+which(ex_summary$bic == min(ex_summary$bic))
+```
+
+### Using BIC, the data with 9 predictors is found to be the best among others
+
+## Performing 5 fold cross validation
+```{r}
+set.seed(23)
+five_fold = trainControl(method = "cv", number = 5)
+five_fold_fit  = train(medv~., data = Boston, method = "lm", trControl = five_fold)
+summary(five_fold_fit)
+```
+
+## Performing 10 fold cross validation
+```{r}
+set.seed(23)
+five_fold = trainControl(method = "cv", number = 10)
+five_fold_fit  = train(medv~., data = Boston, method = "lm", trControl = five_fold)
+summary(five_fold_fit)
+```
+
+## 
+

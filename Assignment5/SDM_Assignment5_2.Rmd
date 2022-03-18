@@ -1,0 +1,111 @@
+---
+title: "SDM_Assignment5_2"
+author: "Sri Balaji Muruganandam"
+date: "10/12/2021"
+output: html_document
+---
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment5")
+```
+
+### Importing necessary libraries
+```{r}
+options(warn=-1)
+library(rpart)
+library(gbm)
+library(MASS)
+library(randomForest)
+options(warn=0)
+```
+
+## The Cleveland heart-disease study was conducted by the Cleveland Clinic Foundation. The response variable is “diag1” (diagnosis of heart disease: buff = healthy, sick = heart disease). There is a second “diag2” that contains stage information about the sick, this can be disregarded. There were 303 patients in the study, and 13 predictive variables, including age, gender, and a range of biological measurements.
+
+### Loading the Cleveland dataset
+```{r}
+load("cleveland.RData")
+dim(cleveland)
+```
+
+### Exploring the high level overview of the data
+```{r}
+names(cleveland)
+head(cleveland,5)
+```
+
+### Splitting the data into training and the test data
+```{r}
+set.seed(23)
+random_index = sample(c(1:nrow(cleveland)), size = round(8/10 * nrow(cleveland)), replace = FALSE)
+train_data = cleveland[random_index,]
+test_data = cleveland[-random_index,]
+
+y_train_data = as.numeric(cleveland$diag1)-1
+y_test_data = as.numeric(cleveland$diag1)-1
+dim(train_data)
+dim(test_data)
+```
+
+## Modelling Random Forest
+### Modelling with m = 5
+```{r}
+model_random_forest <- randomForest(diag1~., data = train_data, n.tree = 1000, mtry = 5)
+
+varImpPlot(model_random_forest)
+importance(model_random_forest)
+```
+
+### Predicting with bagging model
+```{r}
+y_predict = predict(model_random_forest, newdata = test_data, type = "response")
+y_predict = as.numeric(y_predict)-1
+#print(y_predict)
+#print(y_test_data)
+```
+
+### Prediction Error for Bagging model
+```{r}
+prediction_error_rf = sum(abs(y_predict - y_test_data))/length(y_test_data)
+print(prediction_error_rf)
+```
+
+
+## Modelling CART
+```{r}
+model_control <- rpart.control(minsplit = 7, xval = 10, cp = 0)
+model_fit <- rpart(diag1~., data = cleveland, method = "class", control = model_control)
+```
+
+### Plotting the tree
+```{r}
+plot(model_fit, branch = .4, uniform = T, compress = T)
+text(model_fit, use.n = T, all = T, cex = 0.8)
+```
+
+### Pruning the tree
+```{r}
+#model_control <- rpart.control(minsplit = 7, xval = 10, cp = 0)
+#model_fit_prune <- rpart(diag1~., data = cleveland, method = "class", control = model_control)
+
+#plot(model_fit_prune$cptable[,4], main = "CP for Model Selection", ylab = "CP")
+
+#minimum_cp = which.min(model_fit_prune$cptable[,4])
+#model_prune <- prune(model_fit_prune, cp = model_fit_prune$cptable[minimum_cp,1])
+```
+
+```{r}
+model_controls = rpart.control(minbucket = 2, minsplit = 4, xval = 10, cp = 0)
+model_diag = rpart(diag1~., data = cleveland, control = model_controls)
+
+minimum_cp = which.min(model_diag$cptable[,4])
+model_prune = prune(model_diag, cp = model_diag$cptable[minimum_cp, 1])
+```
+
+### Predicting for Test data
+```{r}
+y_predict = predict(model_prune, newdata = train_data)
+print(y_predict)
+```
+

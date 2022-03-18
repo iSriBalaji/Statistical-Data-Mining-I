@@ -1,0 +1,182 @@
+---
+title: "SDM_Assignment5_5"
+author: "Sri Balaji Muruganandam"
+date: "8/12/2021"
+output: html_document
+---
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment5")
+```
+
+### Importing necessary libraries
+```{r}
+options(warn=-1)
+library(rpart)
+library(gbm)
+library(randomForest)
+library(geneplotter)
+options(warn=0)
+```
+
+### Loading the Spam dataset
+```{r}
+load("spam.RData")
+dim(spam)
+```
+
+### Exploring the high level overview of the data
+```{r}
+names(spam)
+head(spam,5)
+```
+
+### Splitting the data into training and the test data
+```{r}
+set.seed(23)
+random_index = sample(c(1:nrow(spam)), size = round(8/10 * nrow(spam)), replace = FALSE)
+train_data <- spam[random_index,]
+test_data <- spam[-random_index,]
+#train_data = data.frame(train_data)
+#test_data = data.frame(test_data)
+data1 = data.frame(spam)
+
+y_train_data <- as.numeric(train_data$spam)-1
+y_test_data <- as.numeric(test_data$spam)-1
+dim(train_data)
+dim(test_data)
+```
+
+### Getting a Single Tree
+```{r}
+model_control = rpart.control(minsplit = 8, xval = 10, cp = 0)
+model_fit = rpart(spam~., data = train_data, method = "class", control = model_control)
+```
+
+### Plotting the tree
+```{r}
+plot(model_fit)
+text(model_fit, use.n = TRUE, cex = 0.3)
+```
+
+### Pruning the tree
+```{r}
+minimum_cp = which.min(model_fit$cptable[,4])
+plot(model_fit$cptable[,4], xlab = "CP", ylab = "CV Error" )
+```
+
+### Prune Fit
+```{r}
+pruned_model_fit = prune(model_fit, cp = model_fit$cptable[minimum_cp, 1])
+plot(pruned_model_fit)
+text(pruned_model_fit, use.n = TRUE, cex = .5)
+```
+
+### Predicting for new values - For Test Data
+```{r}
+model_predict = predict(pruned_model_fit, newdata = test_data, type = "class")
+y_predict = as.numeric(model_predict)-1
+```
+
+### Calculating Error
+```{r}
+prediction_error = sum(abs(y_predict - y_test_data))/length(y_test_data)
+print(prediction_error)
+```
+
+## Modelling Random Forest for the spam data
+### For Random Forest the Y column should be a factor. So Converting the Spam column to factor again
+```{r}
+train_data$spam = as.factor(train_data$spam)
+model_fit_random_forest = randomForest(spam~., data = train_data, n.tree = 1000)
+```
+
+### Plotting the model parameters
+```{r}
+names(model_fit_random_forest)
+varImpPlot(model_fit_random_forest)
+importance(model_fit_random_forest)
+```
+
+### Predicting for new set of values - Test data
+```{r}
+y_predict = predict(model_fit_random_forest, newdata = test_data, type = "response")
+y_predict = as.numeric(y_predict)-1
+```
+
+### Calculating Prediction error for Random Forest
+```{r}
+prediction_error_random_forest = sum(abs(y_predict - y_test_data))/length(y_test_data)
+print(prediction_error_random_forest)
+```
+
+## Using Bagging for m = 10
+```{r}
+model_bagging <- randomForest(spam~., data = train_data, n.tree = 1000, mtry = 10)
+
+varImpPlot(model_bagging)
+importance(model_bagging)
+```
+
+### Predicting with bagging model
+```{r}
+y_predict = predict(model_bagging, newdata = test_data, type = "response")
+y_predict = as.numeric(y_predict)-1
+```
+
+### Prediction Error for Bagging model
+```{r}
+prediction_error_bagging = sum(abs(y_predict - y_test_data))/length(y_test_data)
+print(prediction_error_bagging)
+```
+
+## Modelling Random Forest for different values of m
+### m = 3,4,5,6,7,8,9,10
+```{r}
+m = c(3,4,5,6,7,8,9,10)
+error_rate = c()
+for (i in 1:8){
+model_bag_rf <- randomForest(spam~., data = train_data, n.tree = 350, mtry = m[i])
+
+y_predict = predict(model_bag_rf, newdata = test_data, type = "response")
+y_predict = as.numeric(y_predict)-1
+
+predict_err_rf = sum(abs(y_predict - y_test_data))/length(y_test_data)
+error_rate[i] = predict_err_rf
+if(m[i]==3){
+  m3 = model_bag_rf$err.rate[,1]
+}
+if(m[i]==5){
+  m5 = model_bag_rf$err.rate[,1]
+}
+if(m[i]==7){
+  m7 = model_bag_rf$err.rate[,1]
+}
+if(m[i]==9){
+  m9 = model_bag_rf$err.rate[,1]
+}
+}
+print(error_rate)
+```
+
+### Plotting m and the  test error value 
+```{r}
+par(bg = '#EEEEEE')
+plot(m,error_rate, col="#E05D5D", type = "b", xlab = "m Value", ylab = " Test Error Rate", ylim = c(0,0.04), main = "m vs Test Error Rate", sub="Error is low when m = 5,6,7", lwd = 3.0)
+```
+
+### Plotting OOB Error rate and m
+### Plotting for m values 3,5,7,9
+```{r}
+x_axis = c(1:length(m3))
+plot(x_axis, m3, col = "#EC255A", type = "s", xlab = "No of trees given to the model", ylab
+= "OOB Error Rate")
+lines(x_axis, m5, col = "#161853", type = "s")
+lines(x_axis, m7, col = "#064635", type = "s")
+lines(x_axis, m9, col = "#DD4A48", type = "s")
+```
+
+## The Error is low when the value of m = 5,6,7
+

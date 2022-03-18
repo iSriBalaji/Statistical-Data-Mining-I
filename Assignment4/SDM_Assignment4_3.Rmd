@@ -1,0 +1,213 @@
+---
+title: "SDM_Assignment4_3"
+author: "Sri Balaji Muruganandam"
+date: "15/11/2021"
+output: html_document
+---
+
+## In this problem, you will develop a model to predict whether a given car gets high or low gas mileage based on the Auto data set.
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment4")
+```
+
+### Importing necessary libraries
+```{r}
+library(ISLR)
+library(leaps)
+library(caret)
+library(MASS)
+library(corrplot)
+```
+
+### Loading Auto data set
+```{r}
+data(Auto)
+dim(Auto)
+head(Auto)
+```
+
+## (a) Create a binary variable, mpg01, that contains a 1 if mpg contains a value above its median, and a 0 if mpg contains a value below its median. You can compute the median using the median() function. Note you may find it helpful to use the data.frame() function to create a single data set containing both mpg01 and the other Auto variables.
+```{r}
+mpg_medi = median(Auto$mpg)
+data = data.frame(Auto)
+data = data[,-9]
+
+data$mpg01[data$mpg>mpg_medi] <- 1
+data$mpg01[data$mpg<=mpg_medi] <- 0
+tail(data,13)
+```
+
+### (b) Explore the data graphically in order to investigate the association between mpg01 and the other features. Which of the other features seem most likely to be useful in predicting mpg01? Scatterplots and boxplots may be useful tools to answer this question. Describe your findings.
+```{r}
+plot(data)
+plot(data$mpg, data$mpg01)
+corrplot(cor(data), method = 'number')
+```
+
+## From the correlation it is observed that the column mpg, accleration, year and origin are useful in predicting mpg01
+## Removing unwanted columns from the dataset
+```{r}
+head(data,4)
+data = subset(data, select = c(1,2,6,7,8,9) )
+head(data,5)
+```
+
+
+### (c) Split the data into a training set and a test set.
+```{r}
+set.seed(23)
+random_index = sample(c(1:nrow(data)), size = round(8/10 * nrow(data)), replace = FALSE)
+train_data <- data[random_index,]
+test_data <- data[-random_index,]
+
+y_train_data = train_data$mpg01
+y_test_data = test_data$mpg01
+
+dim(train_data)
+dim(test_data)
+```
+
+### (d) Perform LDA on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+### Modelling LDA
+```{r}
+lda_model = lda(mpg01~., data = train_data)
+summary(lda_model)
+```
+
+### Plotting the values of LDA
+```{r}
+plot(lda_model)
+```
+
+### Predicting for test data
+```{r}
+lda_predict_train = predict(lda_model, newdata = train_data)
+lda_predict_test = predict(lda_model, newdata = test_data)
+res_train = lda_predict_train$class
+res_test = lda_predict_test$class
+```
+
+### Calculating the train and test errors
+```{r}
+
+lda_result_train = which(res_train!=y_train_data)
+lda_train_error=length(lda_result_train) / length(y_train_data)
+print(lda_train_error)
+
+
+lda_result_test = which(res_test!=y_test_data)
+lda_test_error=length(lda_result_test) / length(y_test_data)
+print(lda_test_error)
+```
+
+### The train error is 0.06369427 and the test error is 0.02564103 when predicted using LDA.
+
+## (e) Perform QDA on the training data in order to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+## Modelling QDA
+```{r}
+qda_model = qda(mpg01~., data = train_data)
+summary(qda_model)
+```
+
+### Predicting for test data
+```{r}
+qda_predict_train = predict(qda_model, newdata = train_data)
+qda_predict_test = predict(qda_model, newdata = test_data)
+res_trainq = qda_predict_train$class
+res_testq = qda_predict_test$class
+```
+### Calculating the train and test errors
+```{r}
+
+qda_result_train = which(res_trainq!=y_train_data)
+qda_train_error=length(qda_result_train) / length(y_train_data)
+print(qda_train_error)
+
+
+qda_result_test = which(res_testq!=y_test_data)
+qda_test_error=length(qda_result_test) / length(y_test_data)
+print(qda_test_error)
+```
+
+### The train error is 0.05414013 and the test error is 0.03846154 when predicted using QDA.
+
+## (f) Perform logistic regression on the training data to predict mpg01 using the variables that seemed most associated with mpg01 in (b). What is the test error of the model obtained?
+### Modelling Logistic Regression
+```{r}
+model = glm(mpg01~., data = train_data, family = "binomial")
+summary(model)
+```
+
+### Predicting for new values
+```{r}
+test_predict = predict(model, newdata = test_data, type = "response")
+y_predict_test = round(test_predict)
+```
+
+### Calculating the error
+```{r}
+test_error <- sum(abs(y_predict_test- y_test_data))/length(y_test_data)
+print(test_error)
+```
+
+### Computing the confusion matrix
+```{r}
+conf <- confusionMatrix(as.factor(y_predict_test), as.factor(y_test_data))
+names(conf)
+conf$table
+conf$overall
+```
+
+### The model has predicted all of the test errors correctly
+
+### Calculating the accuracy using formula
+```{r}
+false_result = which(y_predict_test==y_test_data)
+accuracy=length(false_result) / length(y_test_data)
+print(accuracy)
+```
+
+## (h) Perform KNN on the training data, with several values of K, in order to predict mpg01. Use only the variables that seemed most associated with mpg01 in (b). What test errors do you obtain? Which value of K seems to perform the best on this data set?
+### Modelling KNN with the values k = 1,3,5,7,9,11,13,15
+```{r}
+require(class)
+kvalues = c(1,3,5,7,9,11,13,15)
+model_knn = c()
+error_knn = c()
+knn_accuracy = c()
+for(i in 1:8) {
+  predict_knn <-knn(train_data[,-1],test_data[,-1],y_train_data,k=kvalues[i])
+  #model_knn[i] = predict_knn
+  error_knn[i]<- mean(predict_knn != y_test_data)
+  
+  false_result_knn = which(predict_knn == y_test_data)
+  knn_accuracy[i] = length(false_result_knn)/length(y_test_data)
+}
+```
+
+### Error at each k value
+```{r}
+print(error_knn)
+print(min(error_knn))
+```
+
+### Accuracy at each k value
+```{r}
+print(knn_accuracy)
+print(max(knn_accuracy))
+```
+
+### From the given k values k = 1,3,5,7,9,11,13,15, k =3 gives better accuracy
+### When K= 3 the error is 0.02564103
+
+### Plotting K and Accuracy
+```{r}
+plot(kvalues,knn_accuracy, col="#334756", type = "b", xlab = "K Value", ylab = "Accuracy", ylim = c(0.95,1.0), main = "Accuracy vs K", sub="Accuracy is more when k = 3", lwd = 3.0)
+
+```
+
+
+

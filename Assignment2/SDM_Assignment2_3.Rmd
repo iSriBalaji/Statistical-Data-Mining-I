@@ -1,0 +1,196 @@
+---
+title: "SDM_Assignment2_3"
+author: "Sri Balaji Muruganandam"
+date: "04/10/2021"
+output: html_document
+---
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment2")
+```
+
+### Importing necessary libraries
+```{r}
+library(ggplot2)
+library(ISLR)
+library(caret)  #Used to perform cross validations
+library(glmnet)
+data(College)
+```
+## (a) Split the data set into a training set and a test set. Fit a linear model using least squares on the training set and report the test error obtained.
+
+```{r}
+co_data <-College
+names(co_data)
+head(co_data)
+dim(co_data)
+```
+
+### Eliminating Null values
+```{r}
+head(na.omit(co_data),3)
+```
+
+
+### Converting Categorical variable to numerical value in the Private Column
+```{r}
+co_data$Private <- as.numeric(as.factor(co_data$Private)) - 1
+head(co_data$Private)
+```
+### Transforming Rating to the range of 1 to 10
+```{r}
+co_data$Grad.Rate <- co_data$Grad.Rate/100
+head(co_data$Grad.Rate)
+```
+
+### Splitting Training and the Testing Data
+```{r}
+set.seed(23)
+cross_val_data = createDataPartition(co_data$Apps, p = 0.75, list = FALSE)
+training_data  <- co_data[cross_val_data, ]
+testing_data <- co_data[-cross_val_data, ]
+dim(training_data)
+dim(testing_data)
+```
+
+### Fitting a Linear Model
+```{r}
+model_fit <- lm(Apps~., data = training_data)
+summary(model_fit)
+```
+
+### Predicting the Number of Applications for the test data
+```{r}
+model_predict <- predict.lm(model_fit, testing_data)
+summary(model_predict)
+```
+
+### Calculating the Model Performance Metrics
+```{r}
+train_y = training_data$Apps
+test_y = testing_data$Apps
+test_MSE <- mean((test_y - model_predict)^2)
+model_r2 = R2(model_predict,test_y)
+model_rmse = RMSE(model_predict,test_y)
+
+print(model_r2)
+print(test_MSE)
+print(model_rmse)
+```
+
+### R2 value of the linear model is 0.9346 which means the model almost fits 93.45% of the data
+### The Mean Square Error of the model is 891547.3 and the RMSE is 944.21
+
+## (b) Fit a ridge regression model on the training set, with λ chosen by crossvalidation. Report the test error obtained.
+```{r}
+ridge.mod = glmnet(training_data[,-2], train_y, alpha=0)
+names(ridge.mod)
+#coef(ridge.mod)
+dim(coef(ridge.mod))
+```
+
+## Finding the lambda
+```{r}
+set.seed(2323)
+
+#cv_train <- sample(1:nrow(co_data), round(nrow(co_data)/2))
+#cv.out <- cv.glmnet(co_data[cv_train,-2], data.frame(co_data[cv_train,2]), alpha = 0)
+#df_train = data.frame(training_data[,-2])
+df_train_y = data.frame(train_y)
+print(class(df_train_y))
+cv_out <- cv.glmnet(as.matrix(training_data[,-2]),as.matrix(train_y), alpha=0)
+plot(cv_out)
+#head(df_train)
+```
+### Best Lambda for the model
+```{r}
+best_lambda <- cv_out$lambda.min
+best_lambda
+```
+#### The best lambda for the ridge model is 370.23
+
+### Fitting a Ridge Regression Model
+```{r}
+ridge.pred <- predict(ridge.mod, s= best_lambda, type = "coefficients")
+
+y_test_predict <- predict(ridge.mod, s = best_lambda, newx = as.matrix(testing_data[,-2]), type = "response")
+
+test_error <- sum((y_test_predict - test_y)^2)
+ridge_test_MSE <- mean((y_test_predict - test_y)^2)
+```
+
+### The test error of the model is 203767671
+```{r}
+print(test_error)
+```
+
+### Similarly, the MSE is 1061290
+```{r}
+print(ridge_test_MSE)
+```
+
+## (c) Fit a lasso model on the training set, with λ chosen by crossvalidation.Report the test error obtained, along with the number of non-zero coefficient estimates.
+
+### Lasso Model
+```{r}
+lasso.mod <- glmnet(training_data[,-2], train_y, alpha=1)
+plot(lasso.mod)
+```
+
+```{r}
+cv_out_lasso = cv.glmnet(as.matrix(training_data[,-2]),as.matrix(train_y), alpha=1)
+best_lambda_lasso = cv_out_lasso$lambda.min
+
+lasso.pred <- predict(lasso.mod, s = best_lambda_lasso, type = "coefficients")
+
+y_test_predict_lasso <- predict(lasso.mod, s = best_lambda_lasso, newx = as.matrix(testing_data[,-2]), type = "response")
+
+test_error_lasso <- sum((y_test_predict_lasso - test_y)^2)
+lasso_test_MSE <- mean((y_test_predict_lasso - test_y)^2)
+```
+
+### Best Lambda for the model is 15.298
+```{r}
+print(best_lambda_lasso)
+```
+
+### The test error is 174591500 and the MSE is 909330.7 respectively
+```{r}
+print(test_error_lasso)
+print(lasso_test_MSE)
+```
+### Finding the number of Non Zero coefficients
+```{r}
+non_z = lasso.pred[1:length(lasso.mod$beta)]
+length(non_z[non_z!=0])
+```
+### The number of non-zero coefficient estimates are 1162
+
+## (d) Among those that are not predicted well, do you notice any common trend shared between the colleges?
+### The Ridge model provides a MSE of 1061290 and the Lasso model provides a MSE of 909330.7. It shows that the Lasso model predicted the number of application better than the Ridge Model.
+```{r}
+ridge_diff = abs(y_test_predict - test_y)
+lasso_diff = abs(y_test_predict_lasso - test_y)
+print(ridge_diff[ridge_diff>350])
+print(lasso_diff[lasso_diff>350])
+x1= list(which(ridge_diff>350))
+x2=list(which(lasso_diff>350))
+not_predicted = intersect(x1[[1]], x2[[1]])
+print(not_predicted)
+```
+### Keeping the threshold of the difference as 350 Applications
+### Colleges that are not predicted well by the models
+```{r}
+unpre <- testing_data[not_predicted,]
+summary(unpre)
+#head(unpre,50)
+print(range(unpre$Grad.Rate))
+```
+
+#### __1. The number of applications for the colleges that are not predicted well is more than 1000__
+#### __2. The difference between applications and the number of students accepted is very less__
+#### __3. Most of the applications are from other states not from the state where the college is located__
+#### __4. The Grade is very high for the Colleges. Even the 1st Quartile is 0.5550__
+

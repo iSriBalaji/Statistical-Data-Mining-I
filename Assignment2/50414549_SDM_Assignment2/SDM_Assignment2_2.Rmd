@@ -1,0 +1,120 @@
+---
+title: "SDM_Assignment2_2"
+author: "Sri Balaji Muruganandam"
+date: "02/10/2021"
+output: html_document
+---
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment2")
+```
+
+### Importing necessary libraries
+```{r}
+library(ggplot2)
+```
+### Loading the test and the training data
+```{r}
+load("zip.test.Rdata")
+load("zip.train.Rdata")
+```
+### Checking the Dimension of the data
+```{r}
+training_data = zip.train
+testing_data = zip.test
+head(na.omit(training_data),1)
+head(na.omit(testing_data),1)
+dim(training_data)
+dim(testing_data)
+```
+### Taking the number 4 and 7 alone from the dataset
+```{r}
+head(training_data[,1])
+
+four_seven1 = which(training_data[,1] == 4 | training_data[,1] == 7)
+train_data = data.frame(training_data[four_seven1,])
+
+four_seven2 = which(testing_data[,1] == 4 | testing_data[,1] == 7)
+test_data = data.frame(testing_data[four_seven2,])
+
+dim(train_data)
+dim(test_data)
+```
+### Fitting a Linear Model
+```{r}
+y_train = train_data[,1]
+y_test = test_data[,1]
+model_fit = lm(y_train~., data = train_data[,-1])
+#summary(model_fit)
+```
+### Predicting for the test data and __Rounding off__ the final prediction
+```{r}
+model_predict_test <- predict.lm(model_fit, test_data[,-1])
+model_predict_test = round(model_predict_test, digits = 0)
+test_MSE <- mean((y_test - model_predict_test)^2)
+print(test_MSE)
+```
+### MSE of Linear Regression is 0.521
+### As we are classifying data. We can use a different metrics as 
+#### Calculating Error
+```{r}
+false_result=which(y_test==model_predict_test)
+accuracy=length(false_result)/length(y_test)
+print(accuracy)
+```
+### For Example, plotting the graph pixel 126 vs 127 to visualize the data
+```{r}
+temp_plot = train_data[,126:127]
+head(temp_plot)
+g1 <- ggplot(temp_plot, aes(train_data[,126],train_data[,127])) + geom_point(aes(colour = as.factor(y_train))) + theme(legend.position = "none")
+plot(g1)
+```
+### Modelling KNN with the values k = 1,3,5,7,9,11,13,15
+```{r}
+require(class)
+kvalues = c(1,3,5,7,9,11,13,15)
+model_knn = c()
+error_knn = c()
+knn_accuracy = c()
+for(i in 1:8) {
+  predict_knn <-knn(train_data[,-1],test_data[,-1],y_train,k=kvalues[i])
+  #model_knn[i] = predict_knn
+  error_knn[i]<- mean(predict_knn != y_test)
+  
+  false_result_knn = which(predict_knn == y_test)
+  knn_accuracy[i] = length(false_result_knn)/length(y_test)
+}
+```
+
+### Error at each k value
+```{r}
+print(error_knn)
+print(min(error_knn))
+```
+
+### Accuracy at each k value
+```{r}
+print(knn_accuracy)
+print(max(knn_accuracy))
+```
+
+### Plotting K and the error value corresponding to each k value
+```{r}
+par(bg = '#EEEEEE')
+plot(kvalues,error_knn, col="#E05D5D", type = "b", xlab = "K Value", ylab = "Test Error", ylim = c(0,0.032), main = "Test Error vs K", sub="Test Error is lower at k = 3 and k = 5", lwd = 3.0)
+```
+### Test Error is low when the value of k = 3 and k = 5.
+### From the given k values k = 1,3,5,7,9,11,13,15, k =3 and k =5 are the best value to fit the model
+
+### Plotting K and Accuracy
+```{r}
+plot(kvalues,knn_accuracy, col="#334756", type = "b", xlab = "K Value", ylab = "Accuracy", ylim = c(0.95,1.0), main = "Accuracy vs K", sub="Accuracy is more when k = 3 and k = 5", lwd = 3.0)
+```
+
+## When we used Linear Regression to classify the digits we get __65.99%__ whereas when we used KNN model with k=3 and k=5 the accuracy is __97.98%__
+
+## The Test Error when k = 1,3,5,7,9,11,13,15 are 0.02305476, 0.02017291, 0.02017291, 0.02593660, 0.02881844, 0.02881844, 0.03170029, 0.02593660 respectively. Here the error is low when __k = 3__ and __k = 5__
+
+

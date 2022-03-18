@@ -1,0 +1,77 @@
+---
+title: "SDM_Assignment1_2"
+author: "Sri Balaji Muruganandam"
+date: "17/09/2021"
+output: html_document
+---
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment1")
+```
+
+### Loading the preprocessed data
+```{r}
+load("cereal_clean_data.RData")
+```
+
+
+### 2) Perform a multiple regression on the dataset you pre-processed in question one. The response variable is rating. Use the lm() function in R.
+#### Including all the predictors except name.
+```{r}
+dim(c_data)
+model_fit <- lm(rating~.-name, data = c_data)
+names(model_fit)
+```
+
+### Computing Confidence Interval
+```{r}
+confint(model_fit)
+```
+
+### Summary of Regression model
+```{r}
+summary(model_fit)
+```
+
+### Predicting for a new set of values
+```{r}
+model_predict <- predict(model_fit, newdata = data.frame("name"=c("Kix","Life"),"mfr" = c(2,3),"type" = c(1,1),"calories"= c(115,130),"protein"= c(2,4),"fat" = c(2,0),"sodium" = c(170,200),"fiber" = c(2.0,5.0),"carbo" = c(12.0,5.0),"sugars" = c(8,2),"potass" = c(1.5,2.0),"vitamins" = c(0.25,1.0),"shelf" = c(3,1),"weight" = c(1.00,1.00),"cups" = c(0.75,0.67)))
+```
+### Summary of prediction
+```{r}
+model_predict
+summary(model_predict)
+```
+#### We can see that for prediction 1, the rating is 0.343 and for prediction 2 the rating is 0.412
+
+### a) Which predictors appear to have a significant relationship to the response.
+#### From the summary, we can find that the predictors **protein, fiber, carbo** have a significant relationship to the response.
+
+### b) What does the coefficient variable for “sugar” suggest?
+```{r}
+cor(c_data[,2:16])
+```
+####  The coefficeient variable for sugar is -0.75184121 
+
+### c) Use the * and : symbols to fit models with interactions. Are there any interactions that are significant?
+#### Using : to fit data. It is used to represent the set of predictors
+```{r}
+model_fit2 <- lm(rating~mfr:cups, data = c_data)
+summary(model_fit2)
+```
+
+#### Using * to fit data. If we are creating a new feature my multipying two predictors we can use *
+#### As protein and fiber have high correlation between rating, creating a new feature by multiplying both.
+```{r}
+model_fit3 <- lm(rating~.-name + protein*fiber, data = c_data)
+summary(model_fit3)
+
+model_fit4 <- lm(rating~.-name + type*protein, data = c_data)
+summary(model_fit4)
+```
+
+#### type X protein and type X fiber interactions are significant when used along with the model
+
+

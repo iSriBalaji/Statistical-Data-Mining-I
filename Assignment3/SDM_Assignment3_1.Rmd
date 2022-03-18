@@ -1,0 +1,260 @@
+---
+title: "SDM_Assignment3_1"
+author: "Sri Balaji Muruganandam"
+date: "22/10/2021"
+output: html_document
+---
+
+### Setting Working Directory
+```{r}
+rm(list = ls())
+setwd("G:\\SDM_Sem01\\Assignment3")
+```
+
+### Importing necessary libraries
+```{r}
+library(leaps)
+```
+
+# 1.  We  have  seen  that  as  the  number  of  features  used  in  a  model  increase,  the  training error  will  necessarily decrease,  but  the  test  error  may  not.  We  will  now  explore  this  in  a simulated  data  set. 
+
+## (a)  Generate  a  data  set  with  p  =  20  features,  n  =  1,000  observations,  and  an associated  quantitative  response  vector  generated  according  to  the  model:  Y  = Xβ  +  ϵ, where  β  has  some  elements  that  are  exactly  equal  to  zero.
+
+### Generating a random point of 20000 and converting it into a data set of 1000 * 20
+```{r}
+set.seed(21)
+#data_points = 0.001 * rnorm(20000)
+#data_points = 0.1 * rnorm(20000)
+data_points = rnorm(20000)
+
+X_data = matrix(data_points, 1000, 20)
+dim(X_data)
+```
+
+### Setting names for the column
+```{r}
+colnames(X_data) = paste('C', 1:20, sep="")
+head(X_data,2)
+```
+
+### Generating coefficient values(Beta) and setting a few of the values to zero to make certain predictors as irrelavant to the model
+```{r}
+coeff = runif(20)
+coeff[c(5,8,11,16,18)] = 0
+print(coeff)
+```
+### Generating Error
+```{r}
+error = 0.00001 * rnorm(1000)
+```
+
+
+### Using Matrix multiplication to get the values of Y
+### X - 1000 * 20 & coeff - 20 * 1
+### So we get 1000 * 1 values for the Y column
+```{r}
+Y_data = (X_data %*% coeff) + error
+print(Y_data[1:5])
+```
+
+### Combining Y_data as 21st column of the original data
+```{r}
+X_data = cbind(X_data, Y_data)
+colnames(X_data)[21] = "C21"
+head(X_data, 2)
+```
+## (b)  Split  your  data  set  into  a  training  set  containing  900  observations  and  a  test set  containing  100  observations.
+```{r}
+set.seed(23)
+random_index = sample(c(1:1000), size = round(9/10 * 1000), replace = FALSE)
+train_data <- X_data[random_index,]
+test_data <- X_data[-random_index,]
+train_data = data.frame(train_data)
+test_data = data.frame(test_data)
+X_data = data.frame(X_data)
+
+y_train_data <- train_data$C21
+y_test_data <- test_data$C21
+dim(train_data)
+dim(test_data)
+```
+
+## (c)  Perform  subset  selection  (best,  forward  or  backwards)  on  the  training  set,  and plot  the  training  set  MSE  associated  with  the  best  model  of  each  size.
+## Performing Forward Subset Selection
+
+### Creating objects to store errors
+```{r}
+train_error_st <- matrix(rep(NA,20))
+test_error_st <- matrix(rep(NA,20))
+```
+
+```{r}
+predict.regsubsets = function(object, newdata, id){
+    form = as.formula(object$call[[2]])
+    mat = model.matrix(form, newdata)
+    coefi = coef(object,id=id)
+    xvars=names(coefi)
+    mat[,xvars]%*%coefi
+}
+```
+
+```{r}
+fwd_subset <- regsubsets(C21~., data = X_data, nbest = 1, nvmax = 20, method = "forward")
+```
+
+```{r}
+for(i in 1:20){
+  y_hat_train = predict(fwd_subset, newdata = train_data, id = i)
+  y_hat_test = predict(fwd_subset, newdata = test_data, id = i)
+  
+  train_error_st[i] = (1/length(y_train_data))*sum((y_train_data-y_hat_train)^2)
+  test_error_st[i] = (1/length(y_test_data))*sum((y_test_data-y_hat_test)^2)
+}
+```
+### Plotting Test Error of Forward Subset Selection
+```{r}
+par(bg = '#EEEEEE')
+plot(train_error_st, col="#00918E", type = "b", xlab = "No. of Variables", ylab = "MSE", ylim = c(0,5.0), main = "Mean Square Error vs No of Variables", sub="Mean Square Error is less at 18", lwd = 3.0)
+#lines(test_error_st, col = "#00918E", type = "b", lwd = 3.0)
+
+```
+
+### Subset with minimum error
+```{r}
+which(train_error_st == min(train_error_st))
+print(min(train_error_st))
+```
+
+## Performing Exhaustive Selection - Best Subset Selection
+### Defining the model
+```{r}
+ex_subset <- regsubsets(C21~., data = X_data, nbest = 1, nvmax = 20, method = "exhaustive")
+ex_summary <- summary(ex_subset)
+names(ex_summary)
+```
+### Plotting Exhaustive Selection Measurements - Errors
+```{r}
+par(mfrow = c(2,2),bg = '#EEEEEE')
+plot(ex_summary$cp, xlab = "No. of Variables", ylab = "Cp", type = "l",col = "#00918E",lwd = 2.5)
+plot(ex_summary$bic, xlab = "No. of Variables", ylab = "BIC", type = "l",col = "#00918E",lwd = 2.5)
+plot(ex_summary$rss, xlab = "No. of Variables", ylab = "RSS", type = "l",col = "#00918E",lwd = 2.5)
+plot(ex_summary$adjr2, xlab = "No. of Variables", ylab = "Adjusted Rsq", type = "l",col = "#00918E",lwd = 2.5)
+```
+
+### Finding the optimal model measures selection
+```{r}
+which(ex_summary$cp == min(ex_summary$cp))
+which(ex_summary$bic == min(ex_summary$bic))
+which(ex_summary$rss == min(ex_summary$rss))
+which(ex_summary$adjr2 == max(ex_summary$adjr2))
+```
+```{r}
+print(min(ex_summary$rss))
+print(max(ex_summary$adjr2))
+```
+## Performing Backward Subset Selection
+
+### Creating objects to store errors
+```{r}
+train_error_bk <- matrix(rep(NA,20))
+test_error_bk <- matrix(rep(NA,20))
+```
+
+```{r}
+fwd_subset <- regsubsets(C21~., data = X_data, nbest = 1, nvmax = 20, method = "backward")
+```
+
+```{r}
+for(i in 1:20){
+  y_hat_train = predict(fwd_subset, newdata = train_data, id = i)
+  y_hat_test = predict(fwd_subset, newdata = test_data, id = i)
+  
+  train_error_bk[i] = (1/length(y_train_data))*sum((y_train_data-y_hat_train)^2)
+  test_error_bk[i] = (1/length(y_test_data))*sum((y_test_data-y_hat_test)^2)
+}
+```
+### Plotting Test Error of Backward Subset Selection
+```{r}
+par(bg = '#EEEEEE')
+plot(train_error_bk, col="#00918E", type = "b", xlab = "No. of Variables", ylab = "MSE", ylim = c(0,5.0), main = "Mean Square Error vs No of Variables", sub="Mean Square Error is less at 18", lwd = 3.0)
+#lines(test_error_bk, col = "#00918E", type = "b", lwd = 3.0)
+
+```
+
+### Subset with minimum error
+
+```{r}
+which(train_error_bk == min(train_error_bk))
+print(min(train_error_bk))
+```
+
+## (d)  Plot  the  test  set  MSE  associated  with  the  best  model  of  each  size. 
+
+## Test Error of Forward Subset Selection
+```{r}
+par(bg = '#EEEEEE')
+plot(test_error_st, col="#E05D5D", type = "b", xlab = "No. of Variables", ylab = "MSE", ylim = c(0,4.0), main = "Mean Square Error vs No of Variables", sub="Mean Square Error is less at 16", lwd = 3.0)
+```
+### Subset with minimum error
+```{r}
+which(test_error_st == min(test_error_st))
+print(min(test_error_st))
+```
+
+## Test Error of Backward Subset Selection
+```{r}
+par(bg = '#EEEEEE')
+plot(test_error_bk, col="#E05D5D", type = "b", xlab = "No. of Variables", ylab = "MSE", ylim = c(0,4.0), main = "Mean Square Error vs No of Variables", sub="Mean Square Error is less at 16", lwd = 3.0)
+```
+### Subset with minimum error
+```{r}
+which(test_error_bk == min(test_error_bk))
+print(min(test_error_bk))
+```
+
+## (e)  For  which  model  size  does  the  test  set  MSE  take  on  its  minimum  value? Comment  on  your  results.  If  it  takes  on  its  minimum  value  for  a  model  containing only  an  intercept  a  model  containing  all  the  features,  then  play  around  with  the way  that  you  are  generating  the  data  in  (a)  until  you  come  up  with  a  scenario  in which  the  test  set  MSE  is  minimized  for  an  intermediate  model  size.
+
+## • The test error is minimum at the model size of 16 for forward subset selection with an error of 1.085376e-10
+## • Similarly, the test error is minimum at the model size of 16 for backward subset selection with an error of 1.085376e-10
+## • For Exhaustive Subset Selection, the test error is low at the model size of 17
+
+## (f)  How  does  the  model  at  which  the  test  set  MSE  is  minimized  compare  to the true  model  used  to  generate  the  data?  Comment  on  the  coefficient  values. 
+
+## The model size of 16 is chosen from the subset selection as the best size of model
+### Actual Coefficient (Randomly generated)
+```{r}
+print(coeff)
+```
+### Coefficient of the best model with size 16
+```{r}
+esti_coeff = coef(fwd_subset, id = 16)
+print(esti_coeff)
+```
+### Initally we have set 0 for 5th,8th,11th,16th,18th values of coefficient. but the model has a small value for the same
+### Variation in coefficient
+```{r}
+coeff_diff = (esti_coeff - coeff)
+print(coeff_diff)
+```
+
+## (g)  Create  a  plot  displaying  ∑ the ( 𝛽 − 𝛽 ) for  a  range  of  values, 𝑗th  coefficient  estimate  for  the  best  model  containing 𝑟,  where 𝑟  coefficients.   Comment  on  what  you  observe.    How  do  these  result  compare  to  part  D.   
+## Calculating all the difference in the coeffiecients
+```{r}
+diff_vector = rep(0,20)
+for(i in 1:20){
+  esti_coeff = coef(fwd_subset, id = i)
+  esti_square = (coeff-esti_coeff)**2
+  diff_vector[i] = sqrt(sum(esti_square))
+}
+print(diff_vector)
+```
+
+## Plotting the variation of coefficient
+```{r}
+x_axis = c(1:20)
+par(bg = '#EEEEEE')
+plot(x_axis, diff_vector, col="#1E3163", type = "b", xlab = "Subset Size", ylab = "Variation in Coefficient", ylim = c(0,5.0), main = "Subset Size vs Coefficient Variation", sub="The variation is less at 19 than 16", lwd = 3.6)
+```
+
+### When we plot the test error in part (d) the subset with minimum error is 16 whereas when we calculated the variation in the coefficient, the subset with size 19 seems to be less.
+

@@ -1,0 +1,74 @@
+---
+title: "SDM_Assignment1_3"
+author: "Sri Balaji Muruganandam"
+date: "17/09/2021"
+output: html_document
+---
+
+### 3) ISL textbook exercise 2.10 modified: This exercise concerns the boston housing data in the MASS library (>library(MASS) >data(Boston)).
+
+### Loading the data
+```{r}
+library(MASS)
+data(Boston)
+```
+
+### Getting High level overview of the data
+```{r}
+head(Boston,5)
+summary(Boston)
+```
+
+### a) Make pairwise scatterplots of the predictors, and describe your findings.
+```{r}
+pairs(Boston)
+pairs(Boston[1:3])
+pairs(Boston[4:6])
+pairs(Boston[7:9])
+pairs(Boston[10:12])
+pairs(Boston[13:14])
+```
+
+### b) Are any of the predictors associated with per capita crime rate?
+```{r}
+cor(Boston)
+```
+#### Yes, From the correlation it is found that the column rad(0.62), nox(0.42) and tax(0.58) is associated with the crime rate very well.
+
+### c) Do any of the suburbs of Boston appear to have particularly high crime rates? Tax rates? Pupil-teacher ratios? Comment on the range of each predictor.
+```{r}
+h_value <- hist(Boston$crim, breaks = 5, main="Histogram of Crime Rate",xlab="Crime Rate",ylab = "Frequency")
+text(h_value$mids,h_value$counts,labels=h_value$counts, adj=c(0.5, -0.5))
+box()
+
+t_value <- hist(Boston$tax, breaks = 5, main="Histogram of Tax",xlab="Tax",ylab = "Frequency")
+text(t_value$mids,t_value$counts,labels=t_value$counts, adj=c(0.5, -0.5))
+box()
+
+p_value <- hist(Boston$ptratio, breaks = 5, main="Histogram of Pupil - teacher Ratio",xlab="Pupil - teacher Ratio",ylab = "Frequency")
+text(p_value$mids,p_value$counts,labels=p_value$counts, adj=c(0.5, -0.5))
+box()
+```
+#### **Crime Rate** - Over 488 crime rate occurs is in the range of 0 - 20. The highest crime rate is in the range of 60 - 100 (3 cases)
+#### **Tax** - Over 155 Tax rate lie in the range 200 - 300. The highest tax case in the range of 700-800 is 5.
+#### **PT Ratio** - Over 201 observations were in the range of 20-22 which is the highest.
+
+### d) In this data set, how many of the suburbs average more than seven rooms per dwelling? More than eight rooms per dwelling? Comment on the suburbs that average more than eight rooms per dwelling.
+```{r}
+seven_rooms <- subset(Boston, rm>7)
+nrow(seven_rooms)   ## No of rooms more than 7
+```
+### There are 64 suburbs more than 7
+```{r}
+eight_rooms <- subset(Boston, rm>8)
+nrow(eight_rooms)   ## No of rooms more than 8
+```
+### There are 13 suburbs more than 8
+```{r}
+plot(eight_rooms$rm~eight_rooms$age)
+```
+
+#### More no of aged people live in suburbs with rooms more than 8 (age over 65 and above)
+
+
+
